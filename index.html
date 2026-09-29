@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finanza - Orçamento Doméstico</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            500: '#16a34a',
+                            600: '#15803d',
+                            900: '#14532d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        /* Custom scrollbar for minimalist feel */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white shadow-sm">
+                    <i data-lucide="wallet" class="w-5 h-5 text-emerald-400"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg text-slate-900 leading-none">Finanza</h1>
+                    <p class="text-xs text-slate-500 mt-0.5">Gestão Financeira Doméstica</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- Persistence Indicator -->
+                <div class="hidden md:flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-200/60" title="Seus dados estão armazenados com segurança no armazenamento local do navegador.">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="font-medium">Salvo Automaticamente</span>
+                </div>
+
+                <!-- Export Backup Button -->
+                <button onclick="exportData()" title="Baixar arquivo de Backup (JSON)" class="p-2 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                </button>
+
+                <!-- Import Backup Button -->
+                <label title="Restaurar dados de arquivo JSON" class="p-2 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all cursor-pointer">
+                    <i data-lucide="upload" class="w-4 h-4"></i>
+                    <input type="file" id="importFile" accept=".json" onchange="importData(event)" class="hidden">
+                </label>
+
+                <!-- Add Transaction Button -->
+                <button onclick="openModal()" class="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-medium px-4 py-2.5 rounded-xl transition-all shadow-sm active:scale-95">
+                    <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                    <span class="hidden sm:inline">Nova Transação</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-8">
+
+        <!-- Date Filtering Toolbar -->
+        <section class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4 md:space-y-0 md:flex md:items-center md:justify-between">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 mr-2 flex items-center gap-1">
+                    <i data-lucide="filter" class="w-3.5 h-3.5"></i> Período
+                </span>
+                
+                <!-- Quick Filter Buttons -->
+                <button onclick="setFilterPeriod('current_month')" id="btn-current-month" class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-all border-slate-200 hover:bg-slate-100 text-slate-700">
+                    Este Mês
+                </button>
+                <button onclick="setFilterPeriod('last_month')" id="btn-last-month" class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-all border-slate-200 hover:bg-slate-100 text-slate-700">
+                    Mês Passado
+                </button>
+                <button onclick="setFilterPeriod('year')" id="btn-year" class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-all border-slate-200 hover:bg-slate-100 text-slate-700">
+                    Este Ano
+                </button>
+                <button onclick="setFilterPeriod('all')" id="btn-all" class="px-3 py-1.5 text-xs font-medium rounded-lg border transition-all border-slate-200 hover:bg-slate-100 text-slate-700">
+                    Ver Todos
+                </button>
+            </div>
+
+            <!-- Custom Date Range Picker -->
+            <div class="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100 md:pt-0 md:border-0">
+                <div class="flex items-center gap-2 text-xs">
+                    <label for="startDate" class="text-slate-500">De:</label>
+                    <input type="date" id="startDate" onchange="applyCustomDateFilter()" class="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900">
+                </div>
+                <div class="flex items-center gap-2 text-xs">
+                    <label for="endDate" class="text-slate-500">Até:</label>
+                    <input type="date" id="endDate" onchange="applyCustomDateFilter()" class="border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900">
+                </div>
+            </div>
+        </section>
+
+        <!-- Financial Overview Cards -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Balance Card -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex items-center justify-between text-slate-500 mb-3">
+                    <span class="text-xs font-semibold uppercase tracking-wider">Saldo Líquido</span>
+                    <div class="p-2 rounded-xl bg-slate-100 text-slate-700">
+                        <i data-lucide="wallet" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <h3 id="card-total-balance" class="text-2xl font-bold text-slate-900">R$ 0,00</h3>
+                <p id="card-balance-sub" class="text-xs text-slate-400 mt-1">Entradas - Saídas</p>
+            </div>
+
+            <!-- Income Card -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex items-center justify-between text-slate-500 mb-3">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-emerald-600">Receitas</span>
+                    <div class="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                        <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <h3 id="card-total-income" class="text-2xl font-bold text-slate-900">R$ 0,00</h3>
+                <p class="text-xs text-slate-400 mt-1">Ganhos acumulados</p>
+            </div>
+
+            <!-- Expense Card -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex items-center justify-between text-slate-500 mb-3">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-rose-600">Despesas</span>
+                    <div class="p-2 rounded-xl bg-rose-50 text-rose-600">
+                        <i data-lucide="arrow-down-left" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <h3 id="card-total-expenses" class="text-2xl font-bold text-slate-900">R$ 0,00</h3>
+                <p class="text-xs text-slate-400 mt-1">Gastos do período</p>
+            </div>
+
+            <!-- Investment Card -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex items-center justify-between text-slate-500 mb-3">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-indigo-600">Investimentos</span>
+                    <div class="p-2 rounded-xl bg-indigo-50 text-indigo-600">
+                        <i data-lucide="trending-up" class="w-4 h-4"></i>
+                    </div>
+                </div>
+                <h3 id="card-total-investments" class="text-2xl font-bold text-slate-900">R$ 0,00</h3>
+                <p class="text-xs text-slate-400 mt-1">Aplicações financeiras</p>
+            </div>
+        </section>
+
+        <!-- Charts Grid -->
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Expenses by Category Donut Chart -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm lg:col-span-1 flex flex-col">
+                <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i data-lucide="pie-chart" class="w-4 h-4 text-slate-500"></i> Despesas por Categoria
+                </h3>
+                <div class="relative flex-1 flex items-center justify-center min-h-[220px]">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Monthly Balance Bar Chart -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm lg:col-span-2 flex flex-col">
+                <h3 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <i data-lucide="bar-chart-3" class="w-4 h-4 text-slate-500"></i> Comparativo do Período
+                </h3>
+                <div class="relative flex-1 min-h-[220px]">
+                    <canvas id="balanceChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- Transactions List Section -->
+        <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <!-- Section Header & Type Filters -->
+            <div class="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">Histórico de Transações</h3>
+                    <p class="text-xs text-slate-500">Exibindo itens de acordo com os filtros selecionados</p>
+                </div>
+
+                <!-- Type Selector & Search -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="relative flex-1 sm:w-64">
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <input type="text" id="searchInput" oninput="renderApp()" placeholder="Buscar lançamentos..." class="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all">
+                    </div>
+
+                    <select id="typeFilter" onchange="renderApp()" class="py-1.5 px-3 text-xs bg-slate-50 border border-slate-200 rounded-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-900">
+                        <option value="all">Todos os tipos</option>
+                        <option value="receita">Receitas</option>
+                        <option value="despesa">Despesas</option>
+                        <option value="investimento">Investimentos</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs text-slate-600">
+                    <thead class="bg-slate-50/50 uppercase text-[10px] tracking-wider font-semibold text-slate-400 border-b border-slate-100">
+                        <tr>
+                            <th class="py-3.5 px-6">Descrição</th>
+                            <th class="py-3.5 px-6">Tipo</th>
+                            <th class="py-3.5 px-6">Categoria</th>
+                            <th class="py-3.5 px-6">Data</th>
+                            <th class="py-3.5 px-6 text-right">Valor</th>
+                            <th class="py-3.5 px-6 text-center">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transaction-rows" class="divide-y divide-slate-100">
+                        <!-- Rows injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden p-12 text-center space-y-3">
+                <div class="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
+                    <i data-lucide="receipt" class="w-6 h-6"></i>
+                </div>
+                <p class="text-sm font-medium text-slate-600">Nenhuma transação encontrada</p>
+                <p class="text-xs text-slate-400">Tente ajustar seus filtros de data ou adicione um novo registro.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Registration Form -->
+    <div id="modal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm hidden flex items-center justify-center p-4 transition-all duration-200">
+        <div class="bg-white rounded-3xl border border-slate-100 shadow-xl max-w-md w-full overflow-hidden transform transition-all">
+            
+            <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+                <h3 id="modal-title" class="font-bold text-slate-900 text-lg">Nova Transação</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="transactionForm" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
+                <input type="hidden" id="editingId" value="">
+                
+                <!-- Type Selection Tabs -->
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">Tipo de Registro</label>
+                    <div class="grid grid-cols-3 gap-2 p-1 bg-slate-100 rounded-xl text-xs font-medium text-slate-600">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="type" value="receita" class="peer hidden" onchange="updateCategoryOptions()" checked>
+                            <div class="py-2 text-center rounded-lg peer-checked:bg-white peer-checked:text-emerald-600 peer-checked:shadow-sm transition-all">
+                                Receita
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="type" value="despesa" class="peer hidden" onchange="updateCategoryOptions()">
+                            <div class="py-2 text-center rounded-lg peer-checked:bg-white peer-checked:text-rose-600 peer-checked:shadow-sm transition-all">
+                                Despesa
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="type" value="investimento" class="peer hidden" onchange="updateCategoryOptions()">
+                            <div class="py-2 text-center rounded-lg peer-checked:bg-white peer-checked:text-indigo-600 peer-checked:shadow-sm transition-all">
+                                Investimento
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Description Input -->
+                <div>
+                    <label for="description" class="block text-xs font-medium text-slate-700 mb-1">Descrição</label>
+                    <input type="text" id="description" required placeholder="Ex: Salário, Supermercado, Ações..." class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all">
+                </div>
+
+                <!-- Amount & Date Grid -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label for="amount" class="block text-xs font-medium text-slate-700 mb-1">Valor (R$)</label>
+                        <input type="number" step="0.01" min="0.01" id="amount" required placeholder="0,00" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all">
+                    </div>
+                    <div>
+                        <label for="date" class="block text-xs font-medium text-slate-700 mb-1">Data</label>
+                        <input type="date" id="date" required class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all">
+                    </div>
+                </div>
+
+                <!-- Category Selector -->
+                <div>
+                    <label for="category" class="block text-xs font-medium text-slate-700 mb-1">Categoria</label>
+                    <select id="category" required onchange="handleCategorySelectChange()" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all">
+                        <!-- Dynamically filled based on selected type -->
+                    </select>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="pt-2 flex items-center justify-end gap-3">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-medium hover:bg-slate-50 transition-all">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium transition-all shadow-sm">
+                        Salvar Transação
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Toast Container -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none bg-slate-900 text-white text-xs px-4 py-3 rounded-xl shadow-lg flex items-center gap-2">
+        <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+        <span id="toast-message">Operação realizada com sucesso!</span>
+    </div>
+
+    <script>
+        // Default Category Preset Definitions with expanded expense categories
+        const CATEGORIES = JSON.parse(localStorage.getItem('finanza_custom_categories')) || {
+            receita: ['Salário', 'Freelance', 'Rendimentos', 'Vendas', 'Outros'],
+            despesa: [
+                'Alimentação',
+                'Moradia',
+                'Transporte',
+                'Veículo & Combustível',
+                'Lazer & Hobbies',
+                'Saúde & Cuidados',
+                'Educação',
+                'Contas & Serviços',
+                'Assinaturas & Streaming',
+                'Cartão de Crédito',
+                'Impostos & Taxas',
+                'Pets',
+                'Vestuário',
+                'Compras',
+                'Viagens',
+                'Outros'
+            ],
+            investimento: ['Renda Fixa', 'Ações', 'Fundos', 'Cripto', 'Reserva de Emergência', 'Outros']
+        };
+
+        // Initial Mock Transactions for immediate preview
+        const DEFAULT_TRANSACTIONS = [
+            { id: '1', description: 'Salário Mensal', amount: 5500.00, type: 'receita', category: 'Salário', date: getRelativeDate(0) },
+            { id: '2', description: 'Supermercado', amount: 840.50, type: 'despesa', category: 'Alimentação', date: getRelativeDate(-2) },
+            { id: '3', description: 'Aluguel & Condomínio', amount: 1800.00, type: 'despesa', category: 'Moradia', date: getRelativeDate(-5) },
+            { id: '4', description: 'Aporte Tesouro Direto', amount: 600.00, type: 'investimento', category: 'Renda Fixa', date: getRelativeDate(-7) },
+            { id: '5', description: 'Projeto Freelance', amount: 1200.00, type: 'receita', category: 'Freelance', date: getRelativeDate(-10) },
+            { id: '6', description: 'Conta de Energia', amount: 185.30, type: 'despesa', category: 'Contas & Serviços', date: getRelativeDate(-12) }
+        ];
+
+        // Load stored state or initialize localStorage explicitly
+        const storedTransactions = localStorage.getItem('finanza_transactions');
+        let transactions = [];
+
+        if (storedTransactions !== null) {
+            try {
+                transactions = JSON.parse(storedTransactions);
+            } catch (e) {
+                transactions = DEFAULT_TRANSACTIONS;
+            }
+        } else {
+            transactions = DEFAULT_TRANSACTIONS;
+            localStorage.setItem('finanza_transactions', JSON.stringify(transactions));
+        }
+
+        let currentFilterPeriod = 'current_month';
+        let categoryChartInstance = null;
+        let balanceChartInstance = null;
+
+        // Date helper: returns ISO string offset by days
+        function getRelativeDate(offsetDays) {
+            const d = new Date();
+            d.setDate(d.getDate() + offsetDays);
+            return d.toISOString().split('T')[0];
+        }
+
+        window.onload = function() {
+            lucide.createIcons();
+            document.getElementById('date').value = new Date().toISOString().split('T')[0];
+            setFilterPeriod('current_month');
+            updateCategoryOptions();
+        };
+
+        // Save State to localStorage
+        function saveToStorage() {
+            localStorage.setItem('finanza_transactions', JSON.stringify(transactions));
+        }
+
+        function setFilterPeriod(period) {
+            currentFilterPeriod = period;
+            const now = new Date();
+            
+            // Highlight active button
+            ['current_month', 'last_month', 'year', 'all'].forEach(p => {
+                const btn = document.getElementById(`btn-${p.replace('_', '-')}`);
+                if (btn) {
+                    if (p === period) {
+                        btn.className = "px-3 py-1.5 text-xs font-semibold rounded-lg bg-slate-900 text-white border border-slate-900 transition-all";
+                    } else {
+                        btn.className = "px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-700 transition-all";
+                    }
+                }
+            });
+
+            const startDateInput = document.getElementById('startDate');
+            const endDateInput = document.getElementById('endDate');
+
+            if (period === 'current_month') {
+                const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+                const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                startDateInput.value = firstDay.toISOString().split('T')[0];
+                endDateInput.value = lastDay.toISOString().split('T')[0];
+            } else if (period === 'last_month') {
+                const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+                startDateInput.value = firstDay.toISOString().split('T')[0];
+                endDateInput.value = lastDay.toISOString().split('T')[0];
+            } else if (period === 'year') {
+                const firstDay = new Date(now.getFullYear(), 0, 1);
+                const lastDay = new Date(now.getFullYear(), 11, 31);
+                startDateInput.value = firstDay.toISOString().split('T')[0];
+                endDateInput.value = lastDay.toISOString().split('T')[0];
+            } else if (period === 'all') {
+                startDateInput.value = '';
+                endDateInput.value = '';
+            }
+
+            renderApp();
+        }
+
+        function applyCustomDateFilter() {
+            currentFilterPeriod = 'custom';
+            // Remove highlighting from quick buttons
+            ['current_month', 'last_month', 'year', 'all'].forEach(p => {
+                const btn = document.getElementById(`btn-${p.replace('_', '-')}`);
+                if (btn) {
+                    btn.className = "px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-700 transition-all";
+                }
+            });
+            renderApp();
+        }
+
+        // Get filtered dataset based on date range, search query, and type select
+        function getFilteredTransactions() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const search = document.getElementById('searchInput').value.toLowerCase().trim();
+            const type = document.getElementById('typeFilter').value;
+
+            return transactions.filter(item => {
+                // Date filter
+                if (startDate && item.date < startDate) return false;
+                if (endDate && item.date > endDate) return false;
+
+                // Type filter
+                if (type !== 'all' && item.type !== type) return false;
+
+                // Search query
+                if (search && !item.description.toLowerCase().includes(search) && !item.category.toLowerCase().includes(search)) {
+                    return false;
+                }
+
+                return true;
+            });
+        }
+
+        function renderSummary(filtered) {
+            let totalIncome = 0;
+            let totalExpenses = 0;
+            let totalInvestments = 0;
+
+            filtered.forEach(t => {
+                const val = parseFloat(t.amount);
+                if (t.type === 'receita') totalIncome += val;
+                else if (t.type === 'despesa') totalExpenses += val;
+                else if (t.type === 'investimento') totalInvestments += val;
+            });
+
+            const netBalance = totalIncome - totalExpenses - totalInvestments;
+
+            document.getElementById('card-total-balance').textContent = formatBRL(netBalance);
+            document.getElementById('card-total-income').textContent = formatBRL(totalIncome);
+            document.getElementById('card-total-expenses').textContent = formatBRL(totalExpenses);
+            document.getElementById('card-total-investments').textContent = formatBRL(totalInvestments);
+
+            // Styling net balance dynamically if negative
+            const balanceCard = document.getElementById('card-total-balance');
+            if (netBalance < 0) {
+                balanceCard.classList.add('text-rose-600');
+                balanceCard.classList.remove('text-slate-900');
+            } else {
+                balanceCard.classList.remove('text-rose-600');
+                balanceCard.classList.add('text-slate-900');
+            }
+        }
+
+        function renderTable(filtered) {
+            const tbody = document.getElementById('transaction-rows');
+            const emptyState = document.getElementById('empty-state');
+            tbody.innerHTML = '';
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            // Sort transactions by date descending
+            const sorted = [...filtered].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            sorted.forEach(t => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 transition-colors group";
+
+                let badgeColor = '';
+                let typeLabel = '';
+                let amountPrefix = '';
+                let amountColor = '';
+
+                if (t.type === 'receita') {
+                    badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                    typeLabel = 'Receita';
+                    amountPrefix = '+ ';
+                    amountColor = 'text-emerald-600 font-semibold';
+                } else if (t.type === 'despesa') {
+                    badgeColor = 'bg-rose-50 text-rose-700 border-rose-200';
+                    typeLabel = 'Despesa';
+                    amountPrefix = '- ';
+                    amountColor = 'text-rose-600 font-semibold';
+                } else {
+                    badgeColor = 'bg-indigo-50 text-indigo-700 border-indigo-200';
+                    typeLabel = 'Investimento';
+                    amountPrefix = '';
+                    amountColor = 'text-indigo-600 font-semibold';
+                }
+
+                tr.innerHTML = `
+                    <td class="py-3.5 px-6 font-medium text-slate-900">${escapeHtml(t.description)}</td>
+                    <td class="py-3.5 px-6">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${badgeColor}">
+                            ${typeLabel}
+                        </span>
+                    </td>
+                    <td class="py-3.5 px-6 text-slate-500">${escapeHtml(t.category)}</td>
+                    <td class="py-3.5 px-6 text-slate-500">${formatDate(t.date)}</td>
+                    <td class="py-3.5 px-6 text-right ${amountColor}">${amountPrefix}${formatBRL(t.amount)}</td>
+                    <td class="py-3.5 px-6 text-center">
+                        <div class="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="editTransaction('${t.id}')" class="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-indigo-50 transition-all" title="Editar">
+                                <i data-lucide="pencil" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="deleteTransaction('${t.id}')" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-all" title="Excluir">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            lucide.createIcons();
+        }
+
+        function renderCharts(filtered) {
+            // Chart 1: Expenses by Category Donut Chart
+            const expenseMap = {};
+            filtered.filter(t => t.type === 'despesa').forEach(t => {
+                expenseMap[t.category] = (expenseMap[t.category] || 0) + parseFloat(t.amount);
+            });
+
+            const categoryLabels = Object.keys(expenseMap);
+            const categoryData = Object.values(expenseMap);
+
+            const ctxCategory = document.getElementById('categoryChart').getContext('2d');
+            if (categoryChartInstance) categoryChartInstance.destroy();
+
+            categoryChartInstance = new Chart(ctxCategory, {
+                type: 'doughnut',
+                data: {
+                    labels: categoryLabels.length > 0 ? categoryLabels : ['Sem Despesas'],
+                    datasets: [{
+                        data: categoryData.length > 0 ? categoryData : [1],
+                        backgroundColor: categoryData.length > 0 ? [
+                            '#f43f5e', '#fb923c', '#facc15', '#a855f7', '#3b82f6', '#14b8a6', '#64748b'
+                        ] : ['#f1f5f9'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    if (categoryData.length === 0) return ' Sem dados no período';
+                                    return ` ${context.label}: ${formatBRL(context.raw)}`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '70%'
+                }
+            });
+
+            // Chart 2: Summary Bar Chart (Receita vs Despesa vs Investimento)
+            let totalIncome = 0, totalExpense = 0, totalInvestment = 0;
+            filtered.forEach(t => {
+                const val = parseFloat(t.amount);
+                if (t.type === 'receita') totalIncome += val;
+                if (t.type === 'despesa') totalExpense += val;
+                if (t.type === 'investimento') totalInvestment += val;
+            });
+
+            const ctxBalance = document.getElementById('balanceChart').getContext('2d');
+            if (balanceChartInstance) balanceChartInstance.destroy();
+
+            balanceChartInstance = new Chart(ctxBalance, {
+                type: 'bar',
+                data: {
+                    labels: ['Receitas', 'Despesas', 'Investimentos'],
+                    datasets: [{
+                        data: [totalIncome, totalExpense, totalInvestment],
+                        backgroundColor: ['#10b981', '#f43f5e', '#6366f1'],
+                        borderRadius: 8,
+                        barThickness: 32
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => ` ${formatBRL(ctx.raw)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            ticks: {
+                                callback: (val) => 'R$ ' + val,
+                                font: { size: 10 }
+                            },
+                            grid: { color: '#f1f5f9' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Master App Render Function
+        function renderApp() {
+            const filtered = getFilteredTransactions();
+            renderSummary(filtered);
+            renderTable(filtered);
+            renderCharts(filtered);
+        }
+
+        function openModal(id = null) {
+            const modalTitle = document.getElementById('modal-title');
+            const editingInput = document.getElementById('editingId');
+
+            if (id) {
+                const item = transactions.find(t => t.id === id);
+                if (!item) return;
+
+                modalTitle.textContent = 'Editar Transação';
+                editingInput.value = item.id;
+
+                // Select corresponding radio button for type
+                const radioType = document.querySelector(`input[name="type"][value="${item.type}"]`);
+                if (radioType) {
+                    radioType.checked = true;
+                    updateCategoryOptions();
+                }
+
+                document.getElementById('description').value = item.description;
+                document.getElementById('amount').value = item.amount;
+                document.getElementById('date').value = item.date;
+                document.getElementById('category').value = item.category;
+            } else {
+                modalTitle.textContent = 'Nova Transação';
+                editingInput.value = '';
+                document.getElementById('transactionForm').reset();
+                document.getElementById('date').value = new Date().toISOString().split('T')[0];
+                const defaultRadio = document.querySelector('input[name="type"][value="receita"]');
+                if (defaultRadio) defaultRadio.checked = true;
+                updateCategoryOptions();
+            }
+
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function editTransaction(id) {
+            openModal(id);
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.add('hidden');
+            document.getElementById('editingId').value = '';
+            document.getElementById('transactionForm').reset();
+            document.getElementById('date').value = new Date().toISOString().split('T')[0];
+            updateCategoryOptions();
+        }
+
+        function updateCategoryOptions() {
+            const selectedType = document.querySelector('input[name="type"]:checked').value;
+            const categorySelect = document.getElementById('category');
+            const currentVal = categorySelect.value;
+            categorySelect.innerHTML = '';
+
+            CATEGORIES[selectedType].forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.textContent = cat;
+                categorySelect.appendChild(opt);
+            });
+
+            // Option to add custom category dynamically
+            const customOpt = document.createElement('option');
+            customOpt.value = '__add_new__';
+            customOpt.textContent = '➕ Adicionar Nova Categoria...';
+            categorySelect.appendChild(customOpt);
+
+            if (CATEGORIES[selectedType].includes(currentVal)) {
+                categorySelect.value = currentVal;
+            }
+        }
+
+        function handleCategorySelectChange() {
+            const categorySelect = document.getElementById('category');
+            if (categorySelect.value === '__add_new__') {
+                const selectedType = document.querySelector('input[name="type"]:checked').value;
+                const newCat = prompt('Digite o nome da nova categoria:');
+                if (newCat && newCat.trim() !== '') {
+                    const trimmed = newCat.trim();
+                    if (!CATEGORIES[selectedType].includes(trimmed)) {
+                        CATEGORIES[selectedType].unshift(trimmed);
+                        localStorage.setItem('finanza_custom_categories', JSON.stringify(CATEGORIES));
+                    }
+                    updateCategoryOptions();
+                    categorySelect.value = trimmed;
+                } else {
+                    categorySelect.selectedIndex = 0;
+                }
+            }
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const editingId = document.getElementById('editingId').value;
+            const type = document.querySelector('input[name="type"]:checked').value;
+            const description = document.getElementById('description').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const date = document.getElementById('date').value;
+            const category = document.getElementById('category').value;
+
+            if (editingId) {
+                // Update existing transaction
+                const index = transactions.findIndex(t => t.id === editingId);
+                if (index !== -1) {
+                    transactions[index] = {
+                        ...transactions[index],
+                        description,
+                        amount,
+                        type,
+                        category,
+                        date
+                    };
+                    showToast('Transação atualizada com sucesso!');
+                }
+            } else {
+                // Create new transaction
+                const newTransaction = {
+                    id: Date.now().toString(),
+                    description,
+                    amount,
+                    type,
+                    category,
+                    date
+                };
+                transactions.push(newTransaction);
+                showToast('Transação cadastrada com sucesso!');
+            }
+
+            saveToStorage();
+            closeModal();
+            renderApp();
+        }
+
+        function deleteTransaction(id) {
+            transactions = transactions.filter(t => t.id !== id);
+            saveToStorage();
+            renderApp();
+            showToast('Transação removida!');
+        }
+
+        // Export backup as JSON file
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(transactions, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `finanza_backup_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            showToast('Backup exportado com sucesso!');
+        }
+
+        // Import backup from JSON file
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (Array.isArray(imported)) {
+                        transactions = imported;
+                        saveToStorage();
+                        renderApp();
+                        showToast('Dados importados com sucesso!');
+                    } else {
+                        showToast('Formato de arquivo inválido.');
+                    }
+                } catch (err) {
+                    showToast('Erro ao ler arquivo de backup.');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        function formatBRL(value) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const [year, month, day] = dateStr.split('-');
+            return `${day}/${month}/${year}`;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.innerText = text;
+            return div.innerHTML;
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const msgSpan = document.getElementById('toast-message');
+            msgSpan.textContent = message;
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
